@@ -5,8 +5,10 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import StatusBadge from '../components/StatusBadge'
 import { fetchTeamCompetitions, fetchTeamBySlug } from '../services/teams'
 import { fetchSquad } from '../services/squads'
+import { fetchTeamStats } from '../services/statistics'
 import { positionLabel } from '../utils/positions'
 import type { Team, SquadMember, TeamCompetitionEntry } from '../types/domain'
+import type { TeamStatRow } from '../services/statistics'
 
 interface TeamDetailResult {
   slug: string
@@ -14,6 +16,7 @@ interface TeamDetailResult {
   team: Team | null
   squad: SquadMember[] | null
   competitions: TeamCompetitionEntry[] | null
+  stats: TeamStatRow | null
   notFound: boolean
 }
 
@@ -23,6 +26,7 @@ const initialResult: TeamDetailResult = {
   team: null,
   squad: null,
   competitions: null,
+  stats: null,
   notFound: false,
 }
 
@@ -42,13 +46,14 @@ export default function TeamDetailPage() {
           team: null,
           squad: null,
           competitions: null,
+          stats: null,
           notFound: true,
         })
         return
       }
       const team = data as unknown as Team
-      Promise.all([fetchSquad(team.id), fetchTeamCompetitions(team.id)]).then(
-        ([squadResult, competitionsResult]) => {
+      Promise.all([fetchSquad(team.id), fetchTeamCompetitions(team.id), fetchTeamStats(team.slug)]).then(
+        ([squadResult, competitionsResult, statsResult]) => {
           if (!active) return
           setResult({
             slug,
@@ -56,6 +61,7 @@ export default function TeamDetailPage() {
             team,
             squad: (squadResult.data ?? []) as unknown as SquadMember[],
             competitions: (competitionsResult.data ?? []) as unknown as TeamCompetitionEntry[],
+            stats: statsResult.data as TeamStatRow | null,
             notFound: false,
           })
         },
@@ -93,7 +99,7 @@ export default function TeamDetailPage() {
     return <LoadingSpinner label="Loading team..." />
   }
 
-  const { team, squad, competitions } = result
+  const { team, squad, competitions, stats } = result
   const enteredCompetitions = (competitions ?? []).filter(
     (entry) => entry.status === 'active' && entry.competitions?.status === 'published',
   )
@@ -121,6 +127,33 @@ export default function TeamDetailPage() {
               </p>
             </div>
           </div>
+        </section>
+
+        <section>
+          <h2 className="mb-3 text-lg font-semibold text-slate-900">Team statistics</h2>
+          {!stats ? (
+            <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-600">
+              No completed matches yet — statistics will appear once results are recorded.
+            </p>
+          ) : (
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {[
+                { label: 'Matches', value: stats.matches_played },
+                { label: 'Wins', value: stats.wins },
+                { label: 'Draws', value: stats.draws },
+                { label: 'Losses', value: stats.losses },
+                { label: 'Goals scored', value: stats.goals_scored },
+                { label: 'Goals conceded', value: stats.goals_conceded },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    {stat.label}
+                  </dt>
+                  <dd className="mt-1 text-2xl font-black text-brand-700">{stat.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </section>
 
         <section>

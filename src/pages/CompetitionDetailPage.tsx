@@ -6,6 +6,8 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import StatusBadge from '../components/StatusBadge'
 import { fetchCompetitionBySlug } from '../services/competitions'
 import { fetchCompetitionFixtures } from '../services/fixtures'
+import StandingsTable from '../components/StandingsTable'
+import PlayerLeaders from '../components/PlayerLeaders'
 import { formatKickoffDate, formatKickoffTime, formatDate } from '../utils/date'
 import { stageLabelFor } from '../utils/stages'
 import type { Competition, Match } from '../types/domain'
@@ -141,7 +143,30 @@ export default function CompetitionDetailPage() {
             </ul>
           )}
         </section>
-      <section>
+
+        <section>
+          <h2 className="mb-3 text-lg font-semibold text-slate-900">Standings</h2>
+          {competition.status !== 'published' ? (
+            <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-600">
+              Standings will be visible once this competition is published.
+            </p>
+          ) : (
+            <StandingsTable competitionId={competition.id} />
+          )}
+        </section>
+
+        <section>
+          <h2 className="mb-3 text-lg font-semibold text-slate-900">Player leaders</h2>
+          {competition.status !== 'published' ? (
+            <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-600">
+              Player leaders will be visible once this competition is published.
+            </p>
+          ) : (
+            <PlayerLeaders competitionId={competition.id} />
+          )}
+        </section>
+
+        <section>
           <h2 className="mb-3 text-lg font-semibold text-slate-900">Fixtures</h2>
           {competition.status !== 'published' ? (
             <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-600">
