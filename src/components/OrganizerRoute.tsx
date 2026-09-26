@@ -16,7 +16,7 @@ export default function OrganizerRoute({ children }: { children: ReactNode }) {
   }
 
   if (!roles.includes('organizer')) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/unauthorized" replace />
   }
 
   return children

@@ -8,6 +8,7 @@ import { fetchFixtureById } from '../services/fixtures'
 import { fetchMatchEvents } from '../services/matchEvents'
 import { formatKickoffDate, formatKickoffTime } from '../utils/date'
 import { stageLabelFor } from '../utils/stages'
+import usePageMeta from '../hooks/usePageMeta'
 import type { Match, MatchEvent } from '../types/domain'
 
 export default function MatchDetailPage() {
@@ -16,6 +17,13 @@ export default function MatchDetailPage() {
   const [match, setMatch] = useState<Match | null>(null)
   const [events, setEvents] = useState<MatchEvent[]>([])
   const [notFound, setNotFound] = useState(false)
+
+  usePageMeta(
+    match
+      ? `${match.home_team?.teams?.name ?? 'Home'} vs ${match.away_team?.teams?.name ?? 'Away'} — SportsHub`
+      : 'Match — SportsHub',
+    match ? 'Match details, score and timeline.' : undefined,
+  )
 
   useEffect(() => {
     let active = true

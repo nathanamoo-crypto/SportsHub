@@ -99,3 +99,30 @@ export async function fetchTeamCompetitions(teamId: number | string) {
     .eq('team_id', teamId)
     .order('registered_at')
 }
+
+export interface PublicTeamEntry {
+  team_id: number
+  status: string
+  teams: {
+    id: number
+    name: string
+    slug: string
+    logo_url: string | null
+    manager: { id: string; full_name: string | null } | null
+  } | null
+  competitions: { id: number; name: string; slug: string; status: string } | null
+}
+
+export async function fetchPublicTeams() {
+  if (!isSupabaseConfigured) return notConfiguredResult()
+  return supabase
+    .from('competition_teams')
+    .select(`
+      team_id,
+      status,
+      teams!competition_teams_team_id_fkey (id, name, slug, logo_url, manager:profiles!teams_manager_id_fkey (id, full_name)),
+      competitions!competition_teams_competition_id_fkey (id, name, slug, status)
+    `)
+    .eq('status', 'active')
+    .eq('competitions.status', 'published')
+}

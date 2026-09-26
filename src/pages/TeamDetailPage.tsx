@@ -7,6 +7,7 @@ import { fetchTeamCompetitions, fetchTeamBySlug } from '../services/teams'
 import { fetchSquad } from '../services/squads'
 import { fetchTeamStats } from '../services/statistics'
 import { positionLabel } from '../utils/positions'
+import usePageMeta from '../hooks/usePageMeta'
 import type { Team, SquadMember, TeamCompetitionEntry } from '../types/domain'
 import type { TeamStatRow } from '../services/statistics'
 
@@ -34,6 +35,11 @@ export default function TeamDetailPage() {
   const { slug: slugParam } = useParams()
   const slug = slugParam ?? ''
   const [result, setResult] = useState<TeamDetailResult>({ ...initialResult, slug })
+
+  usePageMeta(
+    result.team ? `${result.team.name} — SportsHub` : 'Team — SportsHub',
+    result.team ? `Squad, competitions and statistics for ${result.team.name}.` : undefined,
+  )
 
   useEffect(() => {
     let active = true

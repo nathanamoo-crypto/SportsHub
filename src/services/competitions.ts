@@ -2,6 +2,7 @@ import { supabase, isSupabaseConfigured, notConfiguredResult } from './supabase'
 import type {
   Competition,
   CompetitionFormat,
+  CompetitionStatus,
   Sport,
 } from '../types/domain'
 
@@ -51,6 +52,42 @@ export async function fetchOrgCompetitions(organizerId: string) {
     .select(competitionSelect)
     .eq('organizer_id', organizerId)
     .order('created_at', { ascending: false })
+}
+
+export interface PublishedCompetitionFilters {
+  search?: string
+  sportId?: number | string | null
+  statuses?: CompetitionStatus[]
+}
+
+const publicCompetitionSelect = `
+  id,
+  name,
+  slug,
+  description,
+  status,
+  location,
+  start_date,
+  end_date,
+  sport_id,
+  format_id,
+  sports (id, name),
+  competition_formats (id, code, name)
+`
+
+export async function fetchPublishedCompetitions(filters: PublishedCompetitionFilters = {}) {
+  if (!isSupabaseConfigured) return notConfiguredResult()
+  let builder = supabase.from('competitions').select(publicCompetitionSelect)
+  if (filters.search && filters.search.trim()) {
+    builder = builder.ilike('name', `%${filters.search.trim()}%`)
+  }
+  if (filters.sportId) {
+    builder = builder.eq('sport_id', filters.sportId)
+  }
+  if (filters.statuses && filters.statuses.length > 0) {
+    builder = builder.in('status', filters.statuses)
+  }
+  return builder.order('name', { ascending: true })
 }
 
 export async function fetchCompetitionById(id: number | string) {

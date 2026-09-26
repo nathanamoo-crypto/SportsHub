@@ -10,6 +10,7 @@ import StandingsTable from '../components/StandingsTable'
 import PlayerLeaders from '../components/PlayerLeaders'
 import { formatKickoffDate, formatKickoffTime, formatDate } from '../utils/date'
 import { stageLabelFor } from '../utils/stages'
+import usePageMeta from '../hooks/usePageMeta'
 import type { Competition, Match } from '../types/domain'
 
 interface CompetitionDetailResult {
@@ -44,6 +45,11 @@ export default function CompetitionDetailPage() {
   }, [slug])
 
   const competition = result.competition
+
+  usePageMeta(
+    competition ? `${competition.name} — SportsHub` : 'Competition — SportsHub',
+    competition?.description ?? undefined,
+  )
 
   useEffect(() => {
     if (!competition || competition.status !== 'published') return undefined

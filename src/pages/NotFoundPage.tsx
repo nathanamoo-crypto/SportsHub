@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
 import PageContainer from '../components/PageContainer'
+import usePageMeta from '../hooks/usePageMeta'
 
 export default function NotFoundPage() {
+  usePageMeta('Page not found — SportsHub')
   return (
     <PageContainer className="text-center">
       <p className="text-6xl font-extrabold text-brand-600">404</p>

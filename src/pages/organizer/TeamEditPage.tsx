@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useAuth } from '../../hooks/useAuth'
+import { useToast } from '../../context/ToastContext'
 import PageContainer from '../../components/PageContainer'
 import LoadingSpinner from '../../components/LoadingSpinner'
+import LogoUploader from '../../components/LogoUploader'
+import usePageMeta from '../../hooks/usePageMeta'
 import type { ManagerCandidate, Team } from '../../types/domain'
 import {
   fetchManagerCandidates,
@@ -25,6 +28,7 @@ export default function TeamEditPage() {
   const { id: idParam } = useParams()
   const id = idParam ?? ''
   const { user } = useAuth()
+  const toast = useToast()
   const [team, setTeam] = useState<Team | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [managers, setManagers] = useState<ManagerCandidate[]>([])
@@ -32,12 +36,16 @@ export default function TeamEditPage() {
   const [serverError, setServerError] = useState('')
   const [success, setSuccess] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isDirty },
   } = useForm<TeamFormValues>()
+
+  usePageMeta(team ? `Edit ${team.name} — SportsHub` : 'Edit team — SportsHub')
 
   useEffect(() => {
     let active = true
@@ -63,14 +71,17 @@ export default function TeamEditPage() {
         setNotFound(true)
         return
       }
-      setTeam(data as unknown as Team)
+      if (data) {
+        setLogoUrl(data.logo_url)
+        setTeam(data as unknown as Team)
+      }
     })
     return () => {
       active = false
     }
   }, [id])
 
-  useEffect(() => {
+useEffect(() => {
     if (team) {
       reset({
         name: team.name,
@@ -117,9 +128,11 @@ export default function TeamEditPage() {
     setSaving(false)
     if (error) {
       setServerError(error.message)
+      toast.error(error.message)
       return
     }
     setSuccess(true)
+    toast.success('Team saved.')
   }
 
   return (
@@ -161,18 +174,14 @@ export default function TeamEditPage() {
             ) : null}
           </div>
 
-          <div>
-            <label htmlFor="logo_url" className="mb-1 block text-sm font-medium text-slate-700">
-              Logo URL
-            </label>
-            <input
-              id="logo_url"
-              type="url"
-              placeholder="https://example.com/logo.png"
-              className={inputClass}
-              {...register('logo_url')}
-            />
-          </div>
+          <LogoUploader
+            teamId={team.id}
+            value={logoUrl}
+            onChange={(url) => {
+              setLogoUrl(url)
+              setValue('logo_url', url ?? '', { shouldDirty: true })
+            }}
+          />
 
           <div>
             <label htmlFor="manager_id" className="mb-1 block text-sm font-medium text-slate-700">

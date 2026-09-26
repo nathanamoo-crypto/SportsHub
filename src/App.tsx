@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import OrganizerRoute from './components/OrganizerRoute'
+import ScrollToTop from './components/ScrollToTop'
 import HomePage from './pages/HomePage'
 import CompetitionsPage from './pages/CompetitionsPage'
 import CompetitionDetailPage from './pages/CompetitionDetailPage'
@@ -16,6 +17,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import DashboardPage from './pages/DashboardPage'
 import ProfilePage from './pages/ProfilePage'
+import UnauthorizedPage from './pages/UnauthorizedPage'
 import OrganizerDashboardPage from './pages/organizer/OrganizerDashboardPage'
 import CompetitionListPage from './pages/organizer/CompetitionListPage'
 import CreateCompetitionPage from './pages/organizer/CreateCompetitionPage'
@@ -34,6 +36,7 @@ import NotFoundPage from './pages/NotFoundPage'
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         <Route element={<MainLayout />}>
           <Route path="/" element={<HomePage />} />
@@ -49,6 +52,7 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
           <Route
             path="/dashboard"
             element={

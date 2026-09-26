@@ -2,13 +2,18 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useAuth } from '../../hooks/useAuth'
+import { useToast } from '../../context/ToastContext'
 import PageContainer from '../../components/PageContainer'
+import LogoUploader from '../../components/LogoUploader'
+import usePageMeta from '../../hooks/usePageMeta'
 import type { ManagerCandidate } from '../../types/domain'
 import {
   createTeam,
   fetchManagerCandidates,
   isTeamSlugTaken,
+  updateTeam,
 } from '../../services/teams'
+import { uploadTeamLogo } from '../../services/storage'
 import { slugify } from '../../utils/slugify'
 
 const inputClass =
@@ -24,15 +29,21 @@ interface TeamFormValues {
 export default function TeamCreatePage() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const toast = useToast()
   const [managers, setManagers] = useState<ManagerCandidate[]>([])
   const [referenceError, setReferenceError] = useState('')
   const [serverError, setServerError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null)
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<TeamFormValues>({ defaultValues: { is_active: true } })
+
+  usePageMeta('Create team — SportsHub', 'Create a team on SportsHub.')
 
   useEffect(() => {
     let active = true
@@ -46,7 +57,7 @@ export default function TeamCreatePage() {
     }
   }, [])
 
-  const onSubmit = async ({ name, logo_url, manager_id, is_active }: TeamFormValues) => {
+  const onSubmit = async ({ name, manager_id, is_active }: TeamFormValues) => {
     if (!user) return
     setServerError('')
 
@@ -63,11 +74,14 @@ export default function TeamCreatePage() {
     }
 
     setSubmitting(true)
-    const { error } = await createTeam({
-      name: name.trim(),
+    const normalizedName = name.trim()
+    const normalizedManager = manager_id || null
+
+    const { data: created, error } = await createTeam({
+      name: normalizedName,
       slug,
-      logo_url: logo_url?.trim() || null,
-      manager_id: manager_id || null,
+      logo_url: logoUrl,
+      manager_id: normalizedManager,
       is_active: Boolean(is_active),
       owner_id: user.id,
     })
@@ -81,6 +95,23 @@ export default function TeamCreatePage() {
       }
       return
     }
+
+    const teamId = created?.id
+    if (teamId && pendingLogoFile) {
+      const { data: upload } = await uploadTeamLogo(teamId, pendingLogoFile)
+      if (!upload) {
+        toast.error('Team created, but the logo could not be uploaded.')
+      } else {
+        await updateTeam(teamId, user.id, {
+          name: normalizedName,
+          logo_url: upload.url,
+          manager_id: normalizedManager,
+          is_active: Boolean(is_active),
+        })
+      }
+    }
+
+    toast.success('Team created.')
     navigate('/organizer/teams')
   }
 
@@ -117,18 +148,15 @@ export default function TeamCreatePage() {
           ) : null}
         </div>
 
-        <div>
-          <label htmlFor="logo_url" className="mb-1 block text-sm font-medium text-slate-700">
-            Logo URL
-          </label>
-          <input
-            id="logo_url"
-            type="url"
-            placeholder="https://example.com/logo.png"
-            className={inputClass}
-            {...register('logo_url')}
-          />
-        </div>
+        <LogoUploader
+          teamId={null}
+          value={logoUrl}
+          onChange={(url) => {
+            setLogoUrl(url)
+            setValue('logo_url', url ?? '', { shouldDirty: true })
+          }}
+          onFile={setPendingLogoFile}
+        />
 
         <div>
           <label htmlFor="manager_id" className="mb-1 block text-sm font-medium text-slate-700">

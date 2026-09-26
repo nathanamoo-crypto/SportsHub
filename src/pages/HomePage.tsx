@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import PageContainer from '../components/PageContainer'
+import usePageMeta from '../hooks/usePageMeta'
 
 const features = [
   {
@@ -32,6 +33,10 @@ const gettingStarted = [
 ]
 
 export default function HomePage() {
+  usePageMeta(
+    'SportsHub — Manage competitions, teams and fixtures',
+    'The simple way to manage your competitions, teams, and players from kick-off to the final whistle.',
+  )
   return (
     <>
       <section className="bg-slate-900">

@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
+import { useToast } from '../../context/ToastContext'
+import usePageMeta from '../../hooks/usePageMeta'
 import PageContainer from '../../components/PageContainer'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import StatusBadge from '../../components/StatusBadge'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import MatchTimeline from '../../components/MatchTimeline'
 import { fetchFixtureById, saveResult } from '../../services/fixtures'
 import {
@@ -62,6 +65,7 @@ function fullName(player: { first_name: string; last_name: string } | null | und
 export default function FixtureResultPage() {
   const { fixtureId: fixtureIdParam } = useParams()
   const fixtureId = fixtureIdParam ?? ''
+  const toast = useToast()
   const [fixture, setFixture] = useState<Match | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [fetchError, setFetchError] = useState('')
@@ -74,6 +78,13 @@ export default function FixtureResultPage() {
   const [eventError, setEventError] = useState('')
   const [eventSaving, setEventSaving] = useState(false)
   const [removingEventId, setRemovingEventId] = useState<number | null>(null)
+  const [removeTarget, setRemoveTarget] = useState<number | null>(null)
+
+  usePageMeta(
+    fixture
+      ? `Result — ${fixture.home_team?.teams?.name ?? 'Home'} vs ${fixture.away_team?.teams?.name ?? 'Away'} — SportsHub`
+      : 'Fixture result — SportsHub',
+  )
   const {
     register,
     handleSubmit,
@@ -168,9 +179,11 @@ export default function FixtureResultPage() {
     setScoreSaving(false)
     if (error) {
       setFetchError(error.message)
+      toast.error(error.message)
       return
     }
     setScoreSaved(true)
+    toast.success('Result saved.')
     if (data) setFixture(data as unknown as Match)
   }
 
@@ -258,23 +271,28 @@ export default function FixtureResultPage() {
     setEventSaving(false)
     if (error) {
       setEventError(error.message)
+      toast.error(error.message)
       return
     }
     onCancelEdit()
     loadEvents()
+    toast.success(editingEventId ? 'Event updated.' : 'Event added.')
   }
 
-  const onRemoveEvent = (eventId: number) => {
-    if (!window.confirm('Delete this match event?')) return
-    setRemovingEventId(eventId)
+  const confirmRemoveEvent = () => {
+    if (removeTarget == null) return
+    setRemovingEventId(removeTarget)
     setEventError('')
-    deleteMatchEvent(eventId).then(({ error }) => {
+    deleteMatchEvent(removeTarget).then(({ error }) => {
       setRemovingEventId(null)
+      setRemoveTarget(null)
       if (error) {
         setEventError(error.message)
+        toast.error(error.message)
         return
       }
       loadEvents()
+      toast.success('Event deleted.')
     })
   }
 
@@ -588,7 +606,7 @@ export default function FixtureResultPage() {
                       <button
                         type="button"
                         disabled={removingEventId === event.id}
-                        onClick={() => onRemoveEvent(event.id)}
+                        onClick={() => setRemoveTarget(event.id)}
                         className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {removingEventId === event.id ? 'Removing...' : 'Delete'}
@@ -600,6 +618,16 @@ export default function FixtureResultPage() {
           ) : null}
         </section>
       </div>
+
+      <ConfirmDialog
+        open={removeTarget !== null}
+        title="Delete this match event?"
+        message="This permanently removes the event from the timeline."
+        confirmLabel="Delete event"
+        busy={removingEventId !== null}
+        onConfirm={() => void confirmRemoveEvent()}
+        onCancel={() => setRemoveTarget(null)}
+      />
     </PageContainer>
   )
 }

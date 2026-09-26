@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useToast } from '../../context/ToastContext'
+import usePageMeta from '../../hooks/usePageMeta'
 import PageContainer from '../../components/PageContainer'
 import EmptyState from '../../components/EmptyState'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import StatusBadge from '../../components/StatusBadge'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import { fetchCompetitionById } from '../../services/competitions'
 import { cancelFixture, fetchCompetitionFixtures } from '../../services/fixtures'
 import { formatKickoffDate, formatKickoffTime } from '../../utils/date'
@@ -15,11 +18,17 @@ export default function FixturesPage() {
   const { id: idParam } = useParams()
   const id = idParam ?? ''
   const { user } = useAuth()
+  const toast = useToast()
   const [competition, setCompetition] = useState<Competition | null>(null)
   const [fixtures, setFixtures] = useState<Match[] | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [fetchError, setFetchError] = useState('')
   const [cancellingId, setCancellingId] = useState<number | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<Match | null>(null)
+
+  usePageMeta(
+    competition ? `Fixtures — ${competition.name} — SportsHub` : 'Fixtures — SportsHub',
+  )
 
   const loadFixtures = useCallback(() => {
     if (!user) return
@@ -78,17 +87,19 @@ export default function FixturesPage() {
     return <LoadingSpinner label="Loading fixtures..." />
   }
 
-  const handleCancel = (fixtureId: number) => {
-    if (!user) return
-    if (!window.confirm('Cancel this fixture? This cannot be undone.')) return
-    setCancellingId(fixtureId)
+  const confirmCancel = () => {
+    if (!user || !cancelTarget) return
+    setCancellingId(cancelTarget.id)
     setFetchError('')
-    cancelFixture(fixtureId, competition.id).then(({ error }) => {
+    cancelFixture(cancelTarget.id, competition.id).then(({ error }) => {
       setCancellingId(null)
+      setCancelTarget(null)
       if (error) {
         setFetchError(error.message)
+        toast.error(error.message)
         return
       }
+      toast.success('Fixture cancelled.')
       loadFixtures()
     })
   }
@@ -196,7 +207,7 @@ export default function FixturesPage() {
                           <button
                             type="button"
                             disabled={cancellingId === fixture.id}
-                            onClick={() => handleCancel(fixture.id)}
+                            onClick={() => setCancelTarget(fixture)}
                             className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {cancellingId === fixture.id ? 'Cancelling...' : 'Cancel'}
@@ -211,6 +222,20 @@ export default function FixturesPage() {
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={cancelTarget !== null}
+        title="Cancel this fixture?"
+        message={
+          cancelTarget
+            ? `This permanently cancels ${cancelTarget.home_team?.teams?.name ?? 'Home'} vs ${cancelTarget.away_team?.teams?.name ?? 'Away'}. This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Cancel fixture"
+        busy={cancellingId !== null}
+        onConfirm={() => void confirmCancel()}
+        onCancel={() => setCancelTarget(null)}
+      />
     </PageContainer>
   )
 }

@@ -1,20 +1,27 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useToast } from '../../context/ToastContext'
 import PageContainer from '../../components/PageContainer'
 import EmptyState from '../../components/EmptyState'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import StatusBadge from '../../components/StatusBadge'
+import ConfirmDialog from '../../components/ConfirmDialog'
+import usePageMeta from '../../hooks/usePageMeta'
 import { fetchOrgCompetitions, publishCompetition, deleteCompetition } from '../../services/competitions'
 import { formatDate } from '../../utils/date'
 import type { Competition } from '../../types/domain'
 
 export default function CompetitionListPage() {
   const { user } = useAuth()
+  const toast = useToast()
   const [competitions, setCompetitions] = useState<Competition[] | null>(null)
   const [fetchError, setFetchError] = useState('')
   const [publishingId, setPublishingId] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Competition | null>(null)
+
+  usePageMeta('Your competitions — SportsHub', 'Competitions you own. Edit, publish or preview them from here.')
 
   const load = useCallback(() => {
     if (!user) return
@@ -38,21 +45,26 @@ export default function CompetitionListPage() {
     setPublishingId(null)
     if (error) {
       setFetchError(error.message)
+      toast.error(error.message)
       return
     }
+    toast.success('Competition published.')
     load()
   }
 
-  const handleDelete = async (id: number) => {
-    if (!user) return
-    if (!window.confirm('Delete this draft competition and all its fixtures?')) return
-    setDeletingId(id)
-    const { error } = await deleteCompetition(id, user.id)
+  const confirmDelete = async () => {
+    if (!user || !deleteTarget) return
+    setDeletingId(deleteTarget.id)
+    const { error } = await deleteCompetition(deleteTarget.id, user.id)
     setDeletingId(null)
     if (error) {
+      setDeleteTarget(null)
       setFetchError(error.message)
+      toast.error(error.message)
       return
     }
+    setDeleteTarget(null)
+    toast.success('Competition deleted.')
     load()
   }
 
@@ -141,14 +153,14 @@ export default function CompetitionListPage() {
                         </Link>
                         {competition.status === 'draft' ? (
                           <>
-                            <button
-                              type="button"
-                              disabled={deletingId === competition.id}
-                              onClick={() => handleDelete(competition.id)}
-                              className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {deletingId === competition.id ? 'Deleting...' : 'Delete'}
-                            </button>
+<button
+                                  type="button"
+                                  disabled={deletingId === competition.id}
+                                  onClick={() => setDeleteTarget(competition)}
+                                  className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {deletingId === competition.id ? 'Deleting...' : 'Delete'}
+                                </button>
                             <button
                               type="button"
                               disabled={publishingId === competition.id}
@@ -168,6 +180,16 @@ export default function CompetitionListPage() {
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete this draft competition?"
+        message={`This permanently deletes ${deleteTarget ? `"${deleteTarget.name}"` : 'this competition'} and all its fixtures. This cannot be undone.`}
+        confirmLabel="Delete"
+        busy={deletingId !== null}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </PageContainer>
   )
 }
