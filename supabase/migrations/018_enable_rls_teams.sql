@@ -40,19 +40,21 @@ CREATE POLICY "Organizers can view own teams"
   USING (public.is_organizer() AND owner_id = auth.uid());
 
 DROP POLICY IF EXISTS "Teams in published competitions are readable by everyone" ON public.teams;
+
 CREATE POLICY "Teams in published competitions are readable by everyone"
-  ON public.teams
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM public.competition_teams ct
-      JOIN public.competitions c ON c.id = ct.competition_id
-      WHERE ct.team_id = id
-        AND ct.status = 'active'
-        AND c.status = 'published'
-    )
-  );
+ON public.teams
+FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.competition_teams ct
+    JOIN public.competitions c
+      ON c.id = ct.competition_id
+    WHERE ct.team_id = teams.id
+      AND ct.status = 'active'
+      AND c.status = 'published'
+  )
+);
 
 DROP POLICY IF EXISTS "Organizers can create teams" ON public.teams;
 CREATE POLICY "Organizers can create teams"
@@ -88,7 +90,7 @@ CREATE POLICY "Players in published teams are readable by everyone"
     EXISTS (
       SELECT 1
       FROM public.team_players tp
-      WHERE tp.player_id = id
+      WHERE tp.player_id = players.id
         AND EXISTS (
           SELECT 1
           FROM public.teams t
